@@ -32,6 +32,46 @@ def folder_path():
     return header
 
 
+def draw(image, detector, LmList, imgCanvas, brushThickness, eraserThickness, xp, yp, drawcolor):
+    if len(LmList) != 0:
+        x1, y1 = LmList[8][1:]
+        x2, y2 = LmList[12][1:]
+        fingers = detector.fingers_up()
+        if fingers[1] and fingers[2]:
+            xp , yp = 0, 0
+            if y1 < 125:
+                if 299 < x1 < 518:
+                    drawcolor = hex_to_rgb("#00C0FF")
+                elif 553 < x1 < 772:
+                    drawcolor = hex_to_rgb("#08A045")
+                elif 807 < x1 < 1026:
+                    drawcolor = hex_to_rgb("#FE3939")
+                elif 1061 < x1 < 1280:
+                    drawcolor = (0, 0, 0)
+
+            cv2.rectangle(image, (x1, y1 - 25), (x2, y2 + 25), drawcolor, cv2.FILLED)
+            print("Selection Mode")
+
+        if fingers[1] and fingers[2] ==  False:
+            cv2.circle(image, (x1, y1), 15, drawcolor, cv2.FILLED)
+            print("Drawing mode")
+            if xp == 0 and yp == 0:
+                xp , yp = x1, y1
+            elif drawcolor == (0, 0, 0) :
+                cv2.line(image, (xp, yp), (x1, y1), drawcolor, eraserThickness)
+                cv2.line(imgCanvas, (xp, yp), (x1, y1), drawcolor, eraserThickness)
+            else:
+                cv2.line(image, (xp, yp), (x1, y1), drawcolor, brushThickness)
+                cv2.line(imgCanvas, (xp, yp), (x1, y1), drawcolor, brushThickness)
+
+            xp , yp = x1, y1
+
+    imgGray = cv2.cvtColor(imgCanvas, cv2.COLOR_BGR2GRAY)
+    _, imgInv = cv2.threshold(imgGray, 50, 255, cv2.THRESH_BINARY_INV)
+    imgInv = cv2.cvtColor(imgInv, cv2.COLOR_GRAY2BGR)
+    image = cv2.bitwise_and(image, imgInv)
+    image =cv2.bitwise_or(image, imgCanvas)
+    return image, xp, yp, drawcolor
 
 def main():
     drawcolor = hex_to_rgb("#EAA23F")
@@ -55,46 +95,9 @@ def main():
             break
         image = detector.find_hands(image)
         LmList = detector.find_pos_landmarks(image, draw=False)
-        video_time(start_time, image, detector.text_color)
         image[0:125, 0:1280] = header
-        if len(LmList) != 0:
-            x1, y1 = LmList[8][1:]
-            x2, y2 = LmList[12][1:]
-            fingers = detector.fingers_up()
-            if fingers[1] and fingers[2]:
-                xp , yp = 0, 0
-                if y1 < 125:
-                    if 299 < x1 < 518:
-                        drawcolor = hex_to_rgb("#00C0FF")
-                    elif 553 < x1 < 772:
-                        drawcolor = hex_to_rgb("#08A045")
-                    elif 807 < x1 < 1026:
-                        drawcolor = hex_to_rgb("#FE3939")
-                    elif 1061 < x1 < 1280:
-                        drawcolor = (0, 0, 0)
-
-                cv2.rectangle(image, (x1, y1 - 25), (x2, y2 + 25), drawcolor, cv2.FILLED)
-                print("Selection Mode")
-
-            if fingers[1] and fingers[2] ==  False:
-                cv2.circle(image, (x1, y1), 15, drawcolor, cv2.FILLED)
-                print("Drawing mode")
-                if xp == 0 and yp == 0:
-                    xp , yp = x1, y1
-                elif drawcolor == (0, 0, 0) :
-                    cv2.line(image, (xp, yp), (x1, y1), drawcolor, eraserThickness)
-                    cv2.line(imgCanvas, (xp, yp), (x1, y1), drawcolor, eraserThickness)
-                else:
-                    cv2.line(image, (xp, yp), (x1, y1), drawcolor, brushThickness)
-                    cv2.line(imgCanvas, (xp, yp), (x1, y1), drawcolor, brushThickness)
-
-                xp , yp = x1, y1
-
-        imgGray = cv2.cvtColor(imgCanvas, cv2.COLOR_BGR2GRAY)
-        _, imgInv = cv2.threshold(imgGray, 50, 255, cv2.THRESH_BINARY_INV)
-        imgInv = cv2.cvtColor(imgInv, cv2.COLOR_GRAY2BGR)
-        image = cv2.bitwise_and(image, imgInv)
-        image =cv2.bitwise_or(image, imgCanvas)
+        video_time(start_time, image, detector.text_color)
+        image, xp, yp, drawcolor = draw(image, detector, LmList , imgCanvas, brushThickness, eraserThickness, xp, yp, drawcolor)
         cv2.imshow('Lady Killer', image)
         if cv2.waitKey(20) & 0xFF == ord('x'):
             break
